@@ -10,12 +10,26 @@ import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
 import cv2
-import random
 import time
+from shapely import Point
+from shapely import Polygon 
+import numpy as np
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+
+SHOULDER = [300, 100]
+HEAD = [400,300]
+TORO = [50,200]
+LEG = [250,300]
+
+PERSON = [(0,0), (SHOULDER[0],0), (SHOULDER[0],-HEAD[1]), (SHOULDER[0]+HEAD[0], -HEAD[1]), 
+(SHOULDER[0]+HEAD[0],0), (2*SHOULDER[0]+HEAD[0], 0), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]), (SHOULDER[0]+HEAD[0], SHOULDER[1]),
+(SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]+LEG[1]), (2*SHOULDER[0]+HEAD[0]-LEG[0], SHOULDER[1]+TORO[1]+LEG[1]),
+(SHOULDER[0]+HEAD[0], SHOULDER[1]+LEG[1]),
+(SHOULDER[0], SHOULDER[1]+LEG[1]), (LEG[0],SHOULDER[1]+TORO[1]+LEG[1]), (0, SHOULDER[1]+TORO[1]+LEG[1]),
+(SHOULDER[0], SHOULDER[1]+TORO[1]), (SHOULDER[0], SHOULDER[1]), (0, SHOULDER[1])]
 
 # Library Constants
 BaseOptions = mp.tasks.BaseOptions
@@ -38,6 +52,11 @@ class Figure:
         self.x = 400
         self.y = 200
         self.size = 300
+
+        self.pts = []
+        for i in range (len(PERSON)):
+            self.pts.append( (self.x+PERSON[i][0], self.y+PERSON[i][1]))
+        self.poly = Polygon(self.pts)
     
     def draw(self, image):
         """
@@ -46,7 +65,11 @@ class Figure:
         Args:
             image (Image): The image to draw the enemy onto
         """
-        cv2.rectangle(image, (self.x, self.y), (self.x + self.size, self.y + self.size), self.color, 5)
+        # cv2.rectangle(image, (self.x, self.y), (self.x + self.size, self.y + self.size), self.color, 5)
+        cv2.polylines(image, [np.array(self.pts, np.int32)], 1, self.color, 2)
+    
+    def within(self, x, y):
+        return self.poly.contains(Point(x,y))
 
 class Game:
     def __init__(self):
@@ -100,7 +123,7 @@ class Game:
             print("Yay")
             
 
-    def check_enemy_kill(self, image, detection_result):
+    def check_in_box(self, image, detection_result):
         """
         Draws a green circle on the index finger 
         and calls a method to check if we've intercepted
@@ -118,24 +141,37 @@ class Game:
         # Loop through the detected hands to visualize.
         for idx in range(len(pose_landmarks_list)):
             pose_landmarks = pose_landmarks_list[idx]
+            contained = False
 
-            # Get the coordinates for the index finger
-            finger = pose_landmarks[PoseLandmarkPoints.LEFT_SHOULDER.value]
+            # # Get the coordinates for the index finger
+            # pose = pose_landmarks[PoseLandmarkPoints.NOSE.value]
+            # 
 
             # Map the coodrinates back to screen dimensions
-            pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x,
-                                                                            finger.y,
-                                                                            imageWidth,
-                                                                            imageHeight)
+            # pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x,
+            #                                                                 finger.y,
+            #                                                                 imageWidth,
+            #                                                                 imageHeight)
+
+            for i in range(len(pose_landmarks)):
+                pose = pose_landmarks[i]
 
 
-            if pixelCoordinates:
-                # Draw the circle around the index finger
-                cv2.circle(image, (pixelCoordinates[0], pixelCoordinates[1]), 25, GREEN, 5)
+            # if pixelCoordinates:
+            #     # Draw the circle around the index finger
+            #     cv2.circle(image, (pixelCoordinates[0], pixelCoordinates[1]), 25, GREEN, 5)
 
                 # Check if we intercept the enemy
-                for figure in self.figures:
-                    self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
+                # for figure in self.figures:
+                if( pose is not None):
+                    coordinates = DrawingUtil._normalized_to_pixel_coordinates(
+                    pose.x, pose.y, imageWidth, imageHeight)
+                if(coordinates is not None and self.figures[0].within(coordinates[0], coordinates[1])):
+                    contained = True
+                    #self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
+            return contained
+
+                
         
     def run(self):
         """
@@ -173,7 +209,10 @@ class Game:
             cv2.putText(image, str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
             cv2.putText(image, str(current_time), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
-            self.check_enemy_kill(image, results)
+            self.check_in_box(image, results)
+
+            # if self.check_in_box(image, results) == True:
+            #      break
             
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
