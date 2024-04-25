@@ -24,6 +24,8 @@ HEAD = [400,300]
 TORO = [50,200]
 LEG = [250,300]
 
+images = []
+
 PERSON = [(0,0), (SHOULDER[0],0), (SHOULDER[0],-HEAD[1]), (SHOULDER[0]+HEAD[0], -HEAD[1]), 
 (SHOULDER[0]+HEAD[0],0), (2*SHOULDER[0]+HEAD[0], 0), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]), (SHOULDER[0]+HEAD[0], SHOULDER[1]),
 (SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]+LEG[1]), (2*SHOULDER[0]+HEAD[0]-LEG[0], SHOULDER[1]+TORO[1]+LEG[1]),
@@ -70,6 +72,37 @@ class Figure:
     
     def within(self, x, y):
         return self.poly.contains(Point(x,y))
+    
+    def contour(self, image):
+        img = cv2.imread('data/image.jpg') 
+  
+        # converting image into grayscale image 
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+        
+        # setting threshold of gray image 
+        _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY) 
+        
+        # using a findContours() function 
+        contours, _ = cv2.findContours( 
+            threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) 
+        
+        i = 0
+        # list for storing names of shapes 
+        for contour in contours: 
+        
+            # here we are ignoring first counter because  
+            # findcontour function detects whole image as shape 
+            if i == 0: 
+                i = 1
+                continue
+        
+            # cv2.approxPloyDP() function to approximate the shape 
+            approx = cv2.approxPolyDP( 
+                contour, 0.01 * cv2.arcLength(contour, True), True) 
+            
+            # using drawContours() function 
+            cv2.drawContours(img, [contour], 0, (0, 0, 255), 5)
+        cv2.imshow('shapes', image)
 
 class Game:
     def __init__(self):
@@ -141,11 +174,7 @@ class Game:
         # Loop through the detected hands to visualize.
         for idx in range(len(pose_landmarks_list)):
             pose_landmarks = pose_landmarks_list[idx]
-            contained = False
-
-            # # Get the coordinates for the index finger
-            # pose = pose_landmarks[PoseLandmarkPoints.NOSE.value]
-            # 
+            contained = True
 
             # Map the coodrinates back to screen dimensions
             # pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x,
@@ -166,9 +195,10 @@ class Game:
                 if( pose is not None):
                     coordinates = DrawingUtil._normalized_to_pixel_coordinates(
                     pose.x, pose.y, imageWidth, imageHeight)
-                if(coordinates is not None and self.figures[0].within(coordinates[0], coordinates[1])):
-                    contained = True
+                if(coordinates is not None and not self.figures[0].within(coordinates[0], coordinates[1])):
+                    contained = False
                     #self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
+            print(contained)
             return contained
 
                 
@@ -211,8 +241,8 @@ class Game:
 
             self.check_in_box(image, results)
 
-            # if self.check_in_box(image, results) == True:
-            #      break
+            if self.check_in_box(image, results) == True:
+                 break
             
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

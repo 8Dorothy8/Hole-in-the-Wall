@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt 
   
 # reading image 
-img = cv2.imread('image.jpg') 
+img = cv2.imread('data/image.jpg') 
   
 # converting image into grayscale image 
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
@@ -33,15 +33,18 @@ for contour in contours:
     # using drawContours() function 
     cv2.drawContours(img, [contour], 0, (0, 0, 255), 5) 
   
-    # finding center point of shape 
-    M = cv2.moments(contour) 
-    if M['m00'] != 0.0: 
-        x = int(M['m10']/M['m00']) 
-        y = int(M['m01']/M['m00']) 
+    # # finding center point of shape 
+    # M = cv2.moments(contour) 
+    # if M['m00'] != 0.0: 
+    #     x = int(M['m10']/M['m00']) 
+    #     y = int(M['m01']/M['m00']) 
+    
+    
     print(contour)
   
 # displaying the image after drawing contours 
-cv2.imshow('shapes', img) 
+cv2.imshow('shapes', img)
+#cv2.imshow('shapes', contour)
   
 cv2.waitKey(0) 
 cv2.destroyAllWindows() 
