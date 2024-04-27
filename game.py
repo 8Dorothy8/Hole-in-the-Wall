@@ -26,12 +26,12 @@ LEG = [250,300]
 
 images = []
 
-PERSON = [(0,0), (SHOULDER[0],0), (SHOULDER[0],-HEAD[1]), (SHOULDER[0]+HEAD[0], -HEAD[1]), 
-(SHOULDER[0]+HEAD[0],0), (2*SHOULDER[0]+HEAD[0], 0), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]), (SHOULDER[0]+HEAD[0], SHOULDER[1]),
-(SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]+LEG[1]), (2*SHOULDER[0]+HEAD[0]-LEG[0], SHOULDER[1]+TORO[1]+LEG[1]),
-(SHOULDER[0]+HEAD[0], SHOULDER[1]+LEG[1]),
-(SHOULDER[0], SHOULDER[1]+LEG[1]), (LEG[0],SHOULDER[1]+TORO[1]+LEG[1]), (0, SHOULDER[1]+TORO[1]+LEG[1]),
-(SHOULDER[0], SHOULDER[1]+TORO[1]), (SHOULDER[0], SHOULDER[1]), (0, SHOULDER[1])]
+# PERSON = [(0,0), (SHOULDER[0],0), (SHOULDER[0],-HEAD[1]), (SHOULDER[0]+HEAD[0], -HEAD[1]), 
+# (SHOULDER[0]+HEAD[0],0), (2*SHOULDER[0]+HEAD[0], 0), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]), (SHOULDER[0]+HEAD[0], SHOULDER[1]),
+# (SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]+LEG[1]), (2*SHOULDER[0]+HEAD[0]-LEG[0], SHOULDER[1]+TORO[1]+LEG[1]),
+# (SHOULDER[0]+HEAD[0], SHOULDER[1]+LEG[1]),
+# (SHOULDER[0], SHOULDER[1]+LEG[1]), (LEG[0],SHOULDER[1]+TORO[1]+LEG[1]), (0, SHOULDER[1]+TORO[1]+LEG[1]),
+# (SHOULDER[0], SHOULDER[1]+TORO[1]), (SHOULDER[0], SHOULDER[1]), (0, SHOULDER[1])]
 
 # Library Constants
 BaseOptions = mp.tasks.BaseOptions
@@ -47,17 +47,34 @@ class Figure:
     enemy. It spawns randomly within 
     the given bounds.
     """
-    def __init__(self, color, screen_width=1000, screen_height=600):
+    def __init__(self, color, file, screen_width=1000, screen_height=700):
         self.color = color
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.x = 400
-        self.y = 200
-        self.size = 300
+        self.x = 300
+        self.y = 10
 
+        img = cv2.imread(file) 
+  
+        # converting image into grayscale image 
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+        
+        # setting threshold of gray image 
+        _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY) 
+        
+        # using a findContours() function 
+        self.contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        
+        self.contour = [contour for contour in self.contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 5000]
+        fig = np.squeeze(self.contour)
+
+        x = self.x
+        y = self.y
         self.pts = []
-        for i in range (len(PERSON)):
-            self.pts.append( (self.x+PERSON[i][0], self.y+PERSON[i][1]))
+        scale = 1.2
+        for idx in range (len(fig)):
+            self.pts.append((self.x+fig[idx][0]*scale, self.y+fig[idx][1]*scale))
+
         self.poly = Polygon(self.pts)
     
     def draw(self, image):
@@ -69,46 +86,16 @@ class Figure:
         """
         # cv2.rectangle(image, (self.x, self.y), (self.x + self.size, self.y + self.size), self.color, 5)
         cv2.polylines(image, [np.array(self.pts, np.int32)], 1, self.color, 2)
-    
+        #cv2.drawContours(image, self.contours, 3, (255,255,255), 3)
+
     def within(self, x, y):
         return self.poly.contains(Point(x,y))
-    
-    def contour(self, image):
-        img = cv2.imread('data/image.jpg') 
-  
-        # converting image into grayscale image 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
-        
-        # setting threshold of gray image 
-        _, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY) 
-        
-        # using a findContours() function 
-        contours, _ = cv2.findContours( 
-            threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) 
-        
-        i = 0
-        # list for storing names of shapes 
-        for contour in contours: 
-        
-            # here we are ignoring first counter because  
-            # findcontour function detects whole image as shape 
-            if i == 0: 
-                i = 1
-                continue
-        
-            # cv2.approxPloyDP() function to approximate the shape 
-            approx = cv2.approxPolyDP( 
-                contour, 0.01 * cv2.arcLength(contour, True), True) 
-            
-            # using drawContours() function 
-            cv2.drawContours(img, [contour], 0, (0, 0, 255), 5)
-        cv2.imshow('shapes', image)
 
 class Game:
     def __init__(self):
         # Load game elements
         self.score = 0
-        self.figures = [Figure(RED)]
+        self.figures = [Figure(RED, 'data/jumping-girl-silhouette-mug.jpg')]
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='pose_landmarker_lite.task')
