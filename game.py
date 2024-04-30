@@ -199,7 +199,7 @@ class Game:
 
         while self.video.isOpened():
 
-            #current_time = 1714502519-time.time()
+            current_time = time.time()
             #current_time = self.countdown(time_limit)
 
             # Get the current frame
@@ -222,11 +222,11 @@ class Game:
             # Draw the enemy on the image
             self.draw_landmarks_on_pose(image, results)
 
-            mins, secs = divmod(time_limit, 60) 
-            timer = '{:02d}:{:02d}'.format(mins, secs) 
-            cv2.putText(image, "time: " + str(timer), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-            time.sleep(1) 
-            t -= 1 
+            #mins, secs = divmod(time_limit, 60) 
+            #timer = '{:02d}:{:02d}'.format(mins, secs) 
+            cv2.putText(image, "time: " + str(current_time), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+            #time.sleep(1) 
+            #t -= 1 
 
             cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
