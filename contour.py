@@ -1,10 +1,11 @@
 import cv2 
-import numpy as np 
-from matplotlib import pyplot as plt 
-  
-# reading image 
-img = cv2.imread('data/jumping-girl-silhouette-mug.jpg') 
-# img = cv2.bitwise_not(img)
+
+
+img = cv2.imread('data/dance.png')
+
+# resize image to standard and to adjust to distortions
+img = cv2.resize(img, (500,500))
+img = cv2.resize(img, None, fx = 0.75, fy = 0.75)
   
 # converting image into grayscale image 
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
@@ -17,12 +18,15 @@ contours, _ = cv2.findContours(
     threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) 
 
 
-contours = [contour for contour in contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 5000]
+contours = [contour for contour in contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 20000]
+# kick --> 80k frame 17.5k person
+# jumping --> 300k frame 61k person
+# Lsit --> 29k frame 8.2k personq
+
 for contour in contours:
     print(cv2.contourArea(contour))
-  
 i = 0
-  
+
 # list for storing names of shapes 
 # for contour in contours: 
   
@@ -46,7 +50,7 @@ i = 0
 #     #     y = int(M['m01']/M['m00']) 
     
     
-#     print(contour)
+
 
 cv2.drawContours(img, contours, -1, (0, 0, 255), 5) 
   

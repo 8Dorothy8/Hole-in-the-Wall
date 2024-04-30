@@ -14,6 +14,8 @@ import time
 from shapely import Point
 from shapely import Polygon 
 import numpy as np
+import random
+
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -25,13 +27,6 @@ TORO = [50,200]
 LEG = [250,300]
 
 images = []
-
-# PERSON = [(0,0), (SHOULDER[0],0), (SHOULDER[0],-HEAD[1]), (SHOULDER[0]+HEAD[0], -HEAD[1]), 
-# (SHOULDER[0]+HEAD[0],0), (2*SHOULDER[0]+HEAD[0], 0), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]), (SHOULDER[0]+HEAD[0], SHOULDER[1]),
-# (SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]), (2*SHOULDER[0]+HEAD[0], SHOULDER[1]+TORO[1]+LEG[1]), (2*SHOULDER[0]+HEAD[0]-LEG[0], SHOULDER[1]+TORO[1]+LEG[1]),
-# (SHOULDER[0]+HEAD[0], SHOULDER[1]+LEG[1]),
-# (SHOULDER[0], SHOULDER[1]+LEG[1]), (LEG[0],SHOULDER[1]+TORO[1]+LEG[1]), (0, SHOULDER[1]+TORO[1]+LEG[1]),
-# (SHOULDER[0], SHOULDER[1]+TORO[1]), (SHOULDER[0], SHOULDER[1]), (0, SHOULDER[1])]
 
 # Library Constants
 BaseOptions = mp.tasks.BaseOptions
@@ -55,6 +50,9 @@ class Figure:
         self.y = 10
 
         img = cv2.imread(file) 
+        # resize image to standard and to adjust to distortions
+        img = cv2.resize(img, (500,500))
+        img = cv2.resize(img, None, fx = 0.75, fy = 0.75)
   
         # converting image into grayscale image 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
@@ -65,13 +63,13 @@ class Figure:
         # using a findContours() function 
         self.contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-        self.contour = [contour for contour in self.contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 5000]
-        fig = np.squeeze(self.contour)
+        self.contours = [contour for contour in self.contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 20000]
+        fig = np.squeeze(self.contours)
 
         x = self.x
         y = self.y
         self.pts = []
-        scale = 1.2
+        scale = 1.8
         for idx in range (len(fig)):
             self.pts.append((self.x+fig[idx][0]*scale, self.y+fig[idx][1]*scale))
 
@@ -95,7 +93,8 @@ class Game:
     def __init__(self):
         # Load game elements
         self.score = 0
-        self.figures = [Figure(RED, 'data/jumping-girl-silhouette-mug.jpg')]
+        self.figures = [Figure(RED, 'data/easy.png'), Figure(RED, 'data/dance.png'), Figure(RED, 'data/jumping.jpg'),
+        Figure(RED, 'data/kick.png'), Figure(RED, 'data/Lsit.png'), Figure(RED, 'data/stand.png')]
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='pose_landmarker_lite.task')
@@ -187,8 +186,7 @@ class Game:
                     #self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
             print(contained)
             return contained
-
-                
+               
         
     def run(self):
         """
@@ -196,12 +194,13 @@ class Game:
         user presses "q".
         """    
         # Fun until we close the video  
-        #self.level = int(input("Please enter which level you want to play (Normal = 0, Time it = 1, Infinite Spawining = 2, Kill them both! = 3: "))
-        self.start_time = time.time()
+        r1 = random.randint(0, len(self.figures))
+        time_limit = 20
 
         while self.video.isOpened():
 
-            current_time = time.time()-self.start_time
+            #current_time = 1714502519-time.time()
+            #current_time = self.countdown(time_limit)
 
             # Get the current frame
             frame = self.video.read()[1]
@@ -216,20 +215,26 @@ class Game:
             to_detect = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
             results = self.detector.detect(to_detect)
 
-            # Draw the enemy on the image
-            for figure in self.figures:
-                figure.draw(image)
+            # Draw the figure on the image
+            
+            self.figures[r1].draw(image)
             
             # Draw the enemy on the image
             self.draw_landmarks_on_pose(image, results)
 
-            cv2.putText(image, str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-            cv2.putText(image, str(current_time), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+            mins, secs = divmod(time_limit, 60) 
+            timer = '{:02d}:{:02d}'.format(mins, secs) 
+            cv2.putText(image, "time: " + str(timer), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+            time.sleep(1) 
+            t -= 1 
+
+            cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
             self.check_in_box(image, results)
 
             if self.check_in_box(image, results) == True:
-                 break
+                 self.score+=1
+                 r1 = random.randint(0, len(self.figures))
             
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
