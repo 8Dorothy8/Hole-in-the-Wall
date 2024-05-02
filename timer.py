@@ -1,11 +1,3 @@
-"""
-A game that uses pose tracking to play hole in the wall
-
-@author: Dorothy Zhang
-@version: April 2024
-
-"""
-
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
@@ -93,8 +85,6 @@ class Figure:
 class Game:
     def __init__(self):
         # Load game elements
-        self.alive = True
-        self.lives = 1
         self.score = 0
         self.figures = [Figure(RED, 'data/easy.png'), Figure(RED, 'data/dance.png'), Figure(RED, 'data/jumping.jpg'),
         Figure(RED, 'data/kick.png'), Figure(RED, 'data/Lsit.png'), Figure(RED, 'data/stand.png')]
@@ -189,22 +179,24 @@ class Game:
                     #self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
             print(contained)
             return contained
-               
-        
+
     def run(self):
         """
         Main game loop. Runs until the 
         user presses "q".
         """    
         # Fun until we close the video  
-        r1 = random.randint(0, len(self.figures)-1)
-        self.time_limit = 5
+        r1 = random.randint(0, len(self.figures))
+
         self.start_time = time.time()
+        
 
         while self.video.isOpened():
 
-            current_time = int(time.time()-self.start_time)
-            time_left = self.time_limit-current_time
+            current_time = time.time()
+            time = current_time-self.start_time
+            
+            #current_time = self.countdown(time_limit)
 
             # Get the current frame
             frame = self.video.read()[1]
@@ -215,7 +207,7 @@ class Game:
             # Image comes mirrored, now flip it
             image = cv2.flip(image, 1)
 
-             # Convert the image to a readable format and find the hands
+            # Convert the image to a readable format and find the hands
             to_detect = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
             results = self.detector.detect(to_detect)
 
@@ -226,39 +218,29 @@ class Game:
             # Draw the enemy on the image
             self.draw_landmarks_on_pose(image, results)
 
-            cv2.rectangle(image, (25, 15),(260, 125), (0, 0, 0), -1)
+            cv2.putText(image, "time: " + str(time), (50, 200), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
-            cv2.putText(image, "time left: " + str(time_left), (50, 100), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
-            cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
-            cv2.rectangle(image, (975, 15),(1150, 75), (0, 0, 0), -1)
-            cv2.putText(image, "lives: " + str(self.lives), (1000, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
-
-            if self.lives <= 0:
-                cv2.rectangle(image, (0, 0), (1300, 800), (0, 0 , 0), -1)
-                print("game over")
-                cv2.putText(image, "YOU DIED", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-                cv2.putText(image, "press r to play again", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+            cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
             self.check_in_box(image, results)
 
             if self.check_in_box(image, results) == True:
-                 self.score+=1
-                 r1 = random.randint(0, len(self.figures))
+                self.score+=1
+                r1 = random.randint(0, len(self.figures))
             
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             cv2.imshow('Pose Tracking', image)
 
-            if time_left<=0:
-                self.lives-=1
-                self.start_time = time.time()
+            cv2.rectangle(image,(0, 0, 500, 500), BLUE)
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
                 print(self.score)
                 break
-    
 
+        cv2.putText(image, "YOU DIED", (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+        
         # Release our video and close all windows
         self.video.release()
         cv2.destroyAllWindows()
