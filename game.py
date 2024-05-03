@@ -83,9 +83,7 @@ class Figure:
         Args:
             image (Image): The image to draw the enemy onto
         """
-        # cv2.rectangle(image, (self.x, self.y), (self.x + self.size, self.y + self.size), self.color, 5)
         cv2.polylines(image, [np.array(self.pts, np.int32)], 1, self.color, 2)
-        #cv2.drawContours(image, self.contours, 3, (255,255,255), 3)
 
     def within(self, x, y):
         return self.poly.contains(Point(x,y))
@@ -94,10 +92,22 @@ class Game:
     def __init__(self):
         # Load game elements
         self.alive = True
-        self.lives = 1
+        self.lives = 3
         self.score = 0
-        self.figures = [Figure(RED, 'data/easy.png'), Figure(RED, 'data/dance.png'), Figure(RED, 'data/jumping.jpg'),
-        Figure(RED, 'data/kick.png'), Figure(RED, 'data/Lsit.png'), Figure(RED, 'data/stand.png')]
+
+        # easy: 0-9
+        # medium : 10-18
+        # hard: 19-26
+
+        self.figures = [Figure(RED, 'data/easy/easy.png'), Figure(RED, 'data/easy/circle.png'), Figure(RED, 'data/easy/square.png'),
+        Figure(RED, 'data/easy/stand.png'), Figure(RED, 'data/easy/star.png'), Figure(RED, 'data/easy/spongebob.png'), Figure(RED, 'data/easy/patrick.png'),
+        Figure(RED, 'data/easy/dab.png'), Figure(RED, 'data/easy/yoga.jpg'), Figure(RED, 'data/easy/curve.jpg'),
+        Figure(RED, 'data/medium/arms.png'), Figure(RED, 'data/medium/heel.png'), Figure(RED, 'data/medium/jolly.jpg'),
+        Figure(RED, 'data/medium/jumping.jpg'), (RED, 'data/medium/kick.png'), Figure(RED, 'data/medium/man.png'),
+        Figure(RED, 'data/medium/plank.jpg'), Figure(RED, 'data/medium/sit.png'), Figure(RED, 'data/medium/stretch.png'),
+        Figure(RED, 'data/hard/crunch.png'), Figure(RED, 'data/hard/curve.jpg'), Figure(RED, 'data/hard/dance.png'),
+        Figure(RED, 'data/hard/Lsit.png'), Figure(RED, 'data/hard/scorpion.png'), Figure(RED, 'data/hard/split.png'),
+        Figure(RED, 'data/hard/stag.png'), Figure(RED, 'data/hard/V.png')]
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='pose_landmarker_lite.task')
@@ -165,28 +175,15 @@ class Game:
             pose_landmarks = pose_landmarks_list[idx]
             contained = True
 
-            # Map the coodrinates back to screen dimensions
-            # pixelCoordinates = DrawingUtil._normalized_to_pixel_coordinates(finger.x,
-            #                                                                 finger.y,
-            #                                                                 imageWidth,
-            #                                                                 imageHeight)
-
             for i in range(len(pose_landmarks)):
                 pose = pose_landmarks[i]
 
-
-            # if pixelCoordinates:
-            #     # Draw the circle around the index finger
-            #     cv2.circle(image, (pixelCoordinates[0], pixelCoordinates[1]), 25, GREEN, 5)
-
                 # Check if we intercept the enemy
-                # for figure in self.figures:
                 if( pose is not None):
                     coordinates = DrawingUtil._normalized_to_pixel_coordinates(
                     pose.x, pose.y, imageWidth, imageHeight)
                 if(coordinates is not None and not self.figures[0].within(coordinates[0], coordinates[1])):
                     contained = False
-                    #self.check_intercept(pixelCoordinates[0], pixelCoordinates[1], figure, self.figures, image)
             print(contained)
             return contained
                
@@ -198,8 +195,15 @@ class Game:
         """    
         # Fun until we close the video  
         r1 = random.randint(0, len(self.figures)-1)
-        self.time_limit = 5
+        self.time_limit = 20
         self.start_time = time.time()
+        # self.level = int(input("Please enter which level you want to play (Easy = 0, Medium = 1, Hard = 2: "))
+        # if(self.level == 0):
+        #     r1 = random.randint(0, 9)
+        # elif(self.level==1):
+        #     r1 = random.randint(10, 18)
+        # elif(self.level==2):
+        #     r1 = random.randint(19, 26)
 
         while self.video.isOpened():
 
@@ -220,7 +224,7 @@ class Game:
             results = self.detector.detect(to_detect)
 
             # Draw the figure on the image
-            
+
             self.figures[r1].draw(image)
             
             # Draw the enemy on the image
@@ -252,6 +256,7 @@ class Game:
             if time_left<=0:
                 self.lives-=1
                 self.start_time = time.time()
+                r1 = random.randint(0, len(self.figures))
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
