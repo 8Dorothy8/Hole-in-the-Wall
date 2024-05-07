@@ -95,19 +95,18 @@ class Game:
         self.lives = 3
         self.score = 0
 
-        # easy: 0-9
-        # medium : 10-18
-        # hard: 19-26
+        # easy: 0-8
+        # medium : 9-16
+        # hard: 17-22
 
-        self.figures = [Figure(RED, 'data/easy/easy.png'), Figure(RED, 'data/easy/circle.png'), Figure(RED, 'data/easy/square.png'),
+        self.figures = [Figure(RED, 'data/easy/easy.png'), Figure(RED, 'data/easy/circle.png'), Figure(RED, 'data/easy/pig.png'),
         Figure(RED, 'data/easy/stand.png'), Figure(RED, 'data/easy/star.png'), Figure(RED, 'data/easy/spongebob.png'), Figure(RED, 'data/easy/patrick.png'),
-        Figure(RED, 'data/easy/dab.png'), Figure(RED, 'data/easy/yoga.jpg'), Figure(RED, 'data/easy/curve.jpg'),
+        Figure(RED, 'data/easy/dab.png'), Figure(RED, 'data/easy/bodybuild.png'),
         Figure(RED, 'data/medium/arms.png'), Figure(RED, 'data/medium/heel.png'), Figure(RED, 'data/medium/jolly.jpg'),
-        Figure(RED, 'data/medium/jumping.jpg'), (RED, 'data/medium/kick.png'), Figure(RED, 'data/medium/man.png'),
-        Figure(RED, 'data/medium/plank.jpg'), Figure(RED, 'data/medium/sit.png'), Figure(RED, 'data/medium/stretch.png'),
+        Figure(RED, 'data/medium/jumping.jpg'), (RED, 'data/medium/kick.png'), Figure(RED, 'data/medium/bodybuild.png'),
+        Figure(RED, 'data/medium/stretch.png'), Figure(RED, 'data/medium/yoga.png'),
         Figure(RED, 'data/hard/crunch.png'), Figure(RED, 'data/hard/curve.jpg'), Figure(RED, 'data/hard/dance.png'),
-        Figure(RED, 'data/hard/Lsit.png'), Figure(RED, 'data/hard/scorpion.png'), Figure(RED, 'data/hard/split.png'),
-        Figure(RED, 'data/hard/stag.png'), Figure(RED, 'data/hard/V.png')]
+        Figure(RED, 'data/hard/Lsit.png'), Figure(RED, 'data/hard/scorpion.png'), Figure(RED, 'data/hard/split.png')]
 
         # Create the hand detector
         base_options = BaseOptions(model_asset_path='pose_landmarker_lite.task')
@@ -187,23 +186,27 @@ class Game:
             print(contained)
             return contained
                
-        
+    def get_num(self, level):
+        if(level == 0):
+            r1 = random.randint(0, 8)
+        elif(level==1):
+            r1 = random.randint(9, 16)
+        elif(level==2):
+            r1 = random.randint(17, 22)
+        return r1
+
     def run(self):
         """
         Main game loop. Runs until the 
         user presses "q".
         """    
         # Fun until we close the video  
-        r1 = random.randint(0, len(self.figures)-1)
+        #r1 = random.randint(0, len(self.figures)-1)
         self.time_limit = 20
         self.start_time = time.time()
-        # self.level = int(input("Please enter which level you want to play (Easy = 0, Medium = 1, Hard = 2: "))
-        # if(self.level == 0):
-        #     r1 = random.randint(0, 9)
-        # elif(self.level==1):
-        #     r1 = random.randint(10, 18)
-        # elif(self.level==2):
-        #     r1 = random.randint(19, 26)
+
+        self.level = int(input("Please enter which level you want to play (Easy = 0, Medium = 1, Hard = 2): "))
+        r1=self.get_num(self.level)
 
         while self.video.isOpened():
 
@@ -230,7 +233,7 @@ class Game:
             # Draw the enemy on the image
             self.draw_landmarks_on_pose(image, results)
 
-            cv2.rectangle(image, (25, 15),(260, 125), (0, 0, 0), -1)
+            cv2.rectangle(image, (25, 15),(275, 125), (0, 0, 0), -1)
 
             cv2.putText(image, "time left: " + str(time_left), (50, 100), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
             cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
@@ -241,13 +244,13 @@ class Game:
                 cv2.rectangle(image, (0, 0), (1300, 800), (0, 0 , 0), -1)
                 print("game over")
                 cv2.putText(image, "YOU DIED", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-                cv2.putText(image, "press r to play again", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
+                #cv2.putText(image, "press r to play again", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
 
             self.check_in_box(image, results)
 
             if self.check_in_box(image, results) == True:
                  self.score+=1
-                 r1 = random.randint(0, len(self.figures))
+                 r1=self.get_num(self.level)
             
             # Change the color of the frame back
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -256,7 +259,7 @@ class Game:
             if time_left<=0:
                 self.lives-=1
                 self.start_time = time.time()
-                r1 = random.randint(0, len(self.figures))
+                r1=self.get_num(self.level)
 
             # Break the loop if the user presses 'q'
             if cv2.waitKey(50) & 0xFF == ord('q'):
