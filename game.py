@@ -1,8 +1,9 @@
 """
 A game that uses pose tracking to play hole in the wall
+Adapted from finger tracking game code
 
 @author: Dorothy Zhang
-@version: April 2024
+@version: May 2024
 
 """
 
@@ -22,13 +23,6 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
-SHOULDER = [300, 100]
-HEAD = [400,300]
-TORO = [50,200]
-LEG = [250,300]
-
-images = []
-
 # Library Constants
 BaseOptions = mp.tasks.BaseOptions
 PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -39,9 +33,7 @@ DrawingUtil = mp.solutions.drawing_utils
 
 class Figure:
     """
-    A class to represent a random circle
-    enemy. It spawns randomly within 
-    the given bounds.
+    A class to represent the figure shapes drawn on the screen
     """
     def __init__(self, color, file, screen_width=1000, screen_height=700):
         self.color = color
@@ -64,33 +56,37 @@ class Figure:
         # using a findContours() function 
         self.contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
+        # find the main contour
         self.contours = [contour for contour in self.contours if cv2.contourArea(contour) < 100000 and cv2.contourArea(contour) > 20000]
+        
+        # remove extra array dimension
         fig = np.squeeze(self.contours)
 
+        # scale and transform the size of the points of the contour
         x = self.x
         y = self.y
         self.pts = []
         scale = 1.8
         for idx in range (len(fig)):
             self.pts.append((self.x+fig[idx][0]*scale, self.y+fig[idx][1]*scale))
-
+        
+        # make contour points into polygon in order to use the Polygon contain() method
         self.poly = Polygon(self.pts)
     
     def draw(self, image):
         """
-        Enemy is drawn as a circle onto the image
-
-        Args:
-            image (Image): The image to draw the enemy onto
+        Figure polygon is drawn onto the screen
         """
         cv2.polylines(image, [np.array(self.pts, np.int32)], 1, self.color, 2)
 
     def within(self, x, y):
+        """
+        Test whether the point is within the polygon
+        """
         return self.poly.contains(Point(x,y))
 
 class Game:
     def __init__(self):
-        # Load game elements
         self.alive = True
         self.lives = 3
         self.score = 0
@@ -99,6 +95,7 @@ class Game:
         # medium : 9-16
         # hard: 17-22
 
+        # load all the figure images to be traced and used
         self.figures = [Figure(RED, 'data/easy/easy.png'), Figure(RED, 'data/easy/circle.png'), Figure(RED, 'data/easy/pig.png'),
         Figure(RED, 'data/easy/stand.png'), Figure(RED, 'data/easy/star.png'), Figure(RED, 'data/easy/spongebob.png'), Figure(RED, 'data/easy/patrick.png'),
         Figure(RED, 'data/easy/dab.png'), Figure(RED, 'data/easy/bodybuild.png'),
@@ -113,13 +110,13 @@ class Game:
         options = PoseLandmarkerOptions(base_options=base_options, output_segmentation_masks=True)
         self.detector = PoseLandmarker.create_from_options(options)
 
-        # TODO: Load video
+        # Load video
         self.video = cv2.VideoCapture(0)
 
     
     def draw_landmarks_on_pose(self, image, detection_result):
         """
-        Draws all the landmarks on the hand
+        Draws all the landmarks on the pose
         Args:
             image (Image): Image to draw on
             detection_result (HandLandmarkerResult): HandLandmarker detection results
@@ -142,26 +139,14 @@ class Game:
                                        pose_landmarks_proto,
                                        solutions.pose.POSE_CONNECTIONS,
                                        solutions.drawing_styles.get_default_pose_landmarks_style(),
-                                       #solutions.drawing_styles.get_default_pose_connections_style()
                                        )
-    
-    def check_intercept(self, x, y, enemy, enemy_list, image):
-        """
-        Determines if the person is within the figure
-        """
-        
-        if (x > self.figures[0].x and x < self.figures[0].x + self.figures[0].size and y > self.figures[0].y and y < self.figures[0].y + self.figures[0].size):
-            print("Yay")
-            
 
     def check_in_box(self, image, detection_result):
         """
-        Draws a green circle on the index finger 
-        and calls a method to check if we've intercepted
-        with the enemy
+        Checks if all the pose points are within the figure polygon
         Args:
             image (Image): The image to draw on
-            detection_result (HandLandmarkerResult): HandLandmarker detection results
+            detection_result (PoseLandmarkerResult): PoseLandmarker detection results
         """
         # Get image details
         imageHeight, imageWidth = image.shape[:2]
@@ -169,7 +154,7 @@ class Game:
         # Get a list of the landmarks
         pose_landmarks_list = detection_result.pose_landmarks
         
-        # Loop through the detected hands to visualize.
+        # Loop through the detected pose to visualize.
         for idx in range(len(pose_landmarks_list)):
             pose_landmarks = pose_landmarks_list[idx]
             contained = True
@@ -177,7 +162,7 @@ class Game:
             for i in range(len(pose_landmarks)):
                 pose = pose_landmarks[i]
 
-                # Check if we intercept the enemy
+                # Check if we are within the polygon
                 if( pose is not None):
                     coordinates = DrawingUtil._normalized_to_pixel_coordinates(
                     pose.x, pose.y, imageWidth, imageHeight)
@@ -187,6 +172,9 @@ class Game:
             return contained
                
     def get_num(self, level):
+        """
+        Function used to select the index of the figure image for each level
+        """
         if(level == 0):
             r1 = random.randint(0, 8)
         elif(level==1):
@@ -200,16 +188,17 @@ class Game:
         Main game loop. Runs until the 
         user presses "q".
         """    
-        # Fun until we close the video  
-        #r1 = random.randint(0, len(self.figures)-1)
+        # Run until we close the video  
         self.time_limit = 20
         self.start_time = time.time()
 
+        # Ask user for the level
         self.level = int(input("Please enter which level you want to play (Easy = 0, Medium = 1, Hard = 2): "))
         r1=self.get_num(self.level)
 
         while self.video.isOpened():
 
+            # Find the time
             current_time = int(time.time()-self.start_time)
             time_left = self.time_limit-current_time
 
@@ -233,8 +222,8 @@ class Game:
             # Draw the enemy on the image
             self.draw_landmarks_on_pose(image, results)
 
+            # Draw the text
             cv2.rectangle(image, (25, 15),(275, 125), (0, 0, 0), -1)
-
             cv2.putText(image, "time left: " + str(time_left), (50, 100), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
             cv2.putText(image, "score: " + str(self.score), (50, 50), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=BLUE, thickness=2)
             cv2.rectangle(image, (975, 15),(1150, 75), (0, 0, 0), -1)
@@ -244,9 +233,6 @@ class Game:
                 cv2.rectangle(image, (0, 0), (1300, 800), (0, 0 , 0), -1)
                 print("game over")
                 cv2.putText(image, "YOU DIED", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-                #cv2.putText(image, "press r to play again", (650, 300), fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=1, color=GREEN, thickness=2)
-
-            self.check_in_box(image, results)
 
             if self.check_in_box(image, results) == True:
                  self.score+=1
@@ -266,11 +252,9 @@ class Game:
                 print(self.score)
                 break
     
-
         # Release our video and close all windows
         self.video.release()
         cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":        
     g = Game()
